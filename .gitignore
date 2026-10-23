@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.turbo/
+.vite/
+coverage/
+
+.env
+.env.*
+!.env.example
+
+*.log
+*.tsbuildinfo
+
+AGENTS.md
+
+.env.example
+env.example

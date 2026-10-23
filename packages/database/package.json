@@ -1,0 +1,5 @@
+{
+  "name": "@school-sms/database",
+  "private": true,
+  "type": "module"
+}

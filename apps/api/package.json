@@ -1,0 +1,5 @@
+{
+  "name": "@school-sms/api",
+  "private": true,
+  "type": "module"
+}

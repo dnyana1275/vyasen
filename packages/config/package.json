@@ -1,0 +1,5 @@
+{
+  "name": "@school-sms/config",
+  "private": true,
+  "type": "module"
+}
