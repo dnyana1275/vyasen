@@ -55,7 +55,7 @@ export function SettingToggle({
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+          "relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
           checked ? "bg-accent" : "bg-muted",
         )}
       >
@@ -101,7 +101,7 @@ export function ChoiceCards<T extends string>({
           aria-pressed={value === choice.id}
           onClick={() => onChange(choice.id)}
           className={cn(
-            "flex min-h-14 items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:border-accent/50",
+            "flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border p-3 text-left transition-colors hover:border-accent/50",
             value === choice.id
               ? "border-accent bg-accent/10"
               : "border-border bg-background",

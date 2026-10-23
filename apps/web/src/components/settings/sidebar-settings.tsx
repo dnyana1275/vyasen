@@ -49,6 +49,11 @@ const positionChoices = [
 
 export function SidebarSettings() {
   const { preferences, updatePreference } = useTheme();
+  const headerBehavior =
+    preferences.sidebarPosition === "left" ||
+    preferences.sidebarPosition === "right"
+      ? "fixed"
+      : "hide-on-scroll";
 
   return (
     <div className="space-y-5 py-6">
@@ -67,7 +72,15 @@ export function SidebarSettings() {
                 key={id}
                 type="button"
                 aria-pressed={preferences.sidebarPosition === id}
-                onClick={() => updatePreference("sidebarPosition", id)}
+                onClick={() => {
+                  updatePreference("sidebarPosition", id);
+                  updatePreference(
+                    "sidebarHeaderBehavior",
+                    id === "left" || id === "right"
+                      ? "fixed"
+                      : "hide-on-scroll",
+                  );
+                }}
                 className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
                   preferences.sidebarPosition === id
                     ? "border-accent bg-accent/10"
@@ -97,27 +110,28 @@ export function SidebarSettings() {
           </p>
           <div className="mt-3">
             <ChoiceCards
-              value={preferences.sidebarHeaderBehavior}
+              value={headerBehavior}
               onChange={(value) =>
                 updatePreference("sidebarHeaderBehavior", value)
               }
-              choices={[
-                {
-                  id: "fixed",
-                  label: "Pinned",
-                  detail: "Keep navigation in view",
-                },
-                {
-                  id: "scroll",
-                  label: "Scroll with page",
-                  detail: "Move with page content",
-                },
-                {
-                  id: "hide-on-scroll",
-                  label: "Auto-hide",
-                  detail: "Hide while scrolling down",
-                },
-              ]}
+              choices={
+                preferences.sidebarPosition === "left" ||
+                preferences.sidebarPosition === "right"
+                  ? [
+                      {
+                        id: "fixed",
+                        label: "Pinned",
+                        detail: "Keep navigation in view",
+                      },
+                    ]
+                  : [
+                      {
+                        id: "hide-on-scroll",
+                        label: "Auto-hide",
+                        detail: "Hide while scrolling down",
+                      },
+                    ]
+              }
             />
           </div>
         </div>
@@ -240,12 +254,6 @@ export function SidebarSettings() {
           description="Keep the selected navigation position visible on narrow screens."
           checked={preferences.showSidebarOnMobile}
           onChange={(value) => updatePreference("showSidebarOnMobile", value)}
-        />
-        <SettingToggle
-          label="Hide sidebar"
-          description="Allow the sidebar to be hidden and restored with Ctrl+B or the screen-edge button."
-          checked={preferences.hideSidebar}
-          onChange={(value) => updatePreference("hideSidebar", value)}
         />
       </SettingsSection>
 

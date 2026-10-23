@@ -192,6 +192,22 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+:where(
+  button:not(:disabled),
+  a[href],
+  [role="button"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]),
+  input[type="checkbox"]:not(:disabled),
+  input[type="color"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="range"]:not(:disabled),
+  select:not(:disabled),
+  summary,
+  label:has(input:not(:disabled))
+) {
+  cursor: pointer;
+}
+
 ::selection {
   background: color-mix(in srgb, var(--accent) 35%, transparent);
 }

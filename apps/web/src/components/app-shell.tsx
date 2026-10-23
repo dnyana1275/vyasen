@@ -1,18 +1,19 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
-  ChevronLeft,
-  ChevronRight,
   GraduationCap,
   Menu,
-  X,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Settings,
 } from "lucide-react";
 import type { SchoolRole } from "@school-sms/contracts";
 
 import { roleLabels, roleNavigation } from "@/components/navigation-config";
 import { ElasticScroller } from "@/components/elastic-scroller";
 import { ProfileMenu } from "@/components/profile-menu";
-import { SchoolSwitcher } from "@/components/school-switcher";
 import {
   Sidebar,
   SidebarContent,
@@ -39,15 +40,17 @@ function SidebarContents({
   horizontal,
   onNavigate,
   onRoleChange,
-  onToggleVisibility,
+  onToggleCollapsed,
   role,
+  position,
 }: {
   collapsed: boolean;
   horizontal: boolean;
   onNavigate?: () => void;
   onRoleChange: (role: SchoolRole) => void;
-  onToggleVisibility?: () => void;
+  onToggleCollapsed: () => void;
   role: SchoolRole;
+  position: SidebarPosition;
 }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -58,42 +61,65 @@ function SidebarContents({
   return (
     <>
       <SidebarHeader
-        className={`flex shrink-0 items-center gap-3 px-2 ${
+        className={`group relative flex h-16 shrink-0 items-center gap-3 px-2 ${
           horizontal
-            ? "h-16 flex-row sm:px-4"
-            : `h-16 ${collapsed ? "justify-center" : "sm:justify-start"}`
+            ? "flex-row sm:px-4"
+            : collapsed
+              ? "justify-center"
+              : "justify-between"
         }`}
       >
-        <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent text-accent-foreground shadow-lg shadow-accent/20">
-          <GraduationCap size={22} />
-        </span>
         <span
-          className={
-            horizontal
-              ? "hidden min-w-0 sm:block"
-              : collapsed
-                ? "hidden"
-                : "hidden min-w-0 sm:block"
-          }
+          className={`flex min-w-0 items-center gap-2 ${
+            collapsed
+              ? "group-hover:invisible group-focus-within:invisible"
+              : ""
+          }`}
         >
-          <span className="block text-sm font-bold tracking-tight">
-            School SMS
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent text-accent-foreground shadow-lg shadow-accent/20">
+            {collapsed && !horizontal ? (
+              <span className="text-lg font-bold">S</span>
+            ) : (
+              <GraduationCap size={22} />
+            )}
           </span>
-          <span className="block text-xs text-muted-foreground">
-            School workspace
-          </span>
+          {(!collapsed || horizontal) && (
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-bold tracking-tight">
+                School SMS
+              </span>
+              {!horizontal && (
+                <span className="block text-xs text-muted-foreground">
+                  School workspace
+                </span>
+              )}
+            </span>
+          )}
         </span>
-        {onToggleVisibility && (
+        {!horizontal && (
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Hide sidebar"
-            className={`size-8 text-muted-foreground ${
-              horizontal ? "ml-auto" : "absolute right-2 top-4"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+            className={`size-8 shrink-0 text-muted-foreground ${
+              collapsed
+                ? "absolute right-2 hidden group-hover:inline-flex group-focus-within:inline-flex"
+                : ""
             }`}
-            onClick={onToggleVisibility}
+            onClick={onToggleCollapsed}
           >
-            <X size={16} />
+            {position === "right" ? (
+              collapsed ? (
+                <PanelRightOpen size={17} />
+              ) : (
+                <PanelRightClose size={17} />
+              )
+            ) : collapsed ? (
+              <PanelLeftOpen size={17} />
+            ) : (
+              <PanelLeftClose size={17} />
+            )}
           </Button>
         )}
       </SidebarHeader>
@@ -146,8 +172,8 @@ function SidebarContents({
               const labelClass = horizontal
                 ? "inline"
                 : collapsed
-                  ? "max-sm:hidden"
-                  : "max-sm:hidden sm:inline";
+                  ? "hidden"
+                  : "inline";
               const buttonClass = horizontal
                 ? "w-auto shrink-0 px-3"
                 : collapsed
@@ -244,15 +270,50 @@ function SidebarContents({
         className={`flex gap-2 ${
           horizontal
             ? "ml-auto h-16 shrink-0 flex-row items-center px-2 sm:px-4"
-            : "shrink-0 flex-col items-stretch px-1 pb-2 pt-2"
+            : "mt-auto shrink-0 flex-col items-stretch px-1 pb-2 pt-2"
         }`}
       >
-        <SchoolSwitcher compact={collapsed} />
         <ProfileMenu
           role={role}
           onRoleChange={onRoleChange}
-          compact={collapsed}
+          compact={collapsed || horizontal}
         />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              to="/settings/appearance"
+              aria-label="Settings"
+              onClick={onNavigate}
+              className={`flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                collapsed || horizontal ? "justify-center px-0" : ""
+              } ${
+                pathname.startsWith("/settings")
+                  ? "bg-accent/15 text-accent"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <Settings size={18} />
+              {!collapsed && !horizontal && (
+                <span>Settings</span>
+              )}
+            </Link>
+          </TooltipTrigger>
+          {(collapsed || horizontal) && (
+            <TooltipContent
+              side={
+                horizontal
+                  ? position === "bottom"
+                    ? "top"
+                    : "bottom"
+                  : position === "right"
+                    ? "left"
+                    : "right"
+              }
+            >
+              Settings
+            </TooltipContent>
+          )}
+        </Tooltip>
       </SidebarFooter>
     </>
   );
@@ -270,11 +331,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const position = preferences.sidebarPosition as SidebarPosition;
 
   useEffect(() => {
-    if (!preferences.hideSidebar) setSidebarVisible(true);
-  }, [preferences.hideSidebar]);
+    setSidebarVisible(true);
+    setMobileOverride(false);
+    setDockHidden(false);
+  }, [position]);
 
   useEffect(() => {
-    if (!preferences.hideSidebar) return;
     function onKeyDown(event: KeyboardEvent) {
       if (
         event.key.toLowerCase() === "b" &&
@@ -282,15 +344,23 @@ export function AppShell({ children }: { children: ReactNode }) {
         !event.altKey
       ) {
         event.preventDefault();
-        setSidebarVisible((visible) => !visible);
+        if (horizontal) {
+          setSidebarVisible((visible) => !visible);
+        } else {
+          updatePreference("sidebarCollapsed", !preferences.sidebarCollapsed);
+        }
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [preferences.hideSidebar]);
+  }, [
+    horizontal,
+    preferences.sidebarCollapsed,
+    updatePreference,
+  ]);
 
   useEffect(() => {
-    if (preferences.sidebarHeaderBehavior !== "hide-on-scroll") {
+    if (!horizontal) {
       setDockHidden(false);
       return;
     }
@@ -303,7 +373,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [preferences.sidebarHeaderBehavior]);
+  }, [horizontal]);
 
   const contentLayout =
     preferences.mainContentLayout === "contained"
@@ -313,9 +383,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         : "max-w-none";
   const dockBase =
     position === "left"
-      ? `inset-y-0 left-0 ${preferences.sidebarCollapsed ? "w-16" : "w-16 sm:w-64"}`
+      ? `inset-y-0 left-0 ${preferences.sidebarCollapsed ? "w-16" : "w-64"}`
       : position === "right"
-        ? `inset-y-0 right-0 ${preferences.sidebarCollapsed ? "w-16" : "w-16 sm:w-64"}`
+        ? `inset-y-0 right-0 ${preferences.sidebarCollapsed ? "w-16" : "w-64"}`
         : position === "top"
           ? "inset-x-0 top-0 h-16 flex-row"
           : "inset-x-0 bottom-0 h-16 flex-row";
@@ -328,9 +398,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ? "-translate-y-full"
           : "translate-y-full"
     : "";
-  const behaviorPosition =
-    preferences.sidebarHeaderBehavior === "scroll" ? "absolute" : "fixed";
-  const dockClass = `z-40 flex ${behaviorPosition} ${dockBase} border-border bg-background/95 transition-transform duration-200 ${
+  const dockClass = `z-40 flex fixed ${dockBase} border-border bg-background/95 transition-transform duration-200 ${
     horizontal
       ? "flex-row items-center border-r-0 border-b px-2 sm:px-4"
       : `flex-col px-2 sm:px-3 ${
@@ -339,12 +407,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   } ${hiddenTransform} ${
     !preferences.showSidebarOnMobile && !mobileOverride ? "max-sm:hidden" : ""
   } ${!sidebarVisible ? "invisible" : ""}`;
-  const contentPosition = !sidebarVisible
+  const contentPosition = horizontal && !sidebarVisible
     ? ""
     : position === "left"
       ? preferences.sidebarCollapsed
         ? "ml-16"
-        : `ml-16 sm:ml-64 ${
+        : `ml-64 max-sm:ml-0 ${
             !preferences.showSidebarOnMobile && !mobileOverride
               ? "max-sm:ml-0"
               : ""
@@ -352,7 +420,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       : position === "right"
         ? preferences.sidebarCollapsed
           ? "mr-16"
-          : `mr-16 sm:mr-64 ${
+          : `mr-64 max-sm:mr-0 ${
               !preferences.showSidebarOnMobile && !mobileOverride
                 ? "max-sm:mr-0"
                 : ""
@@ -394,43 +462,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               role={role}
               onRoleChange={setRole}
               onNavigate={() => setMobileOverride(false)}
-              onToggleVisibility={
-                preferences.hideSidebar || !preferences.showSidebarOnMobile
-                  ? () => {
-                      if (preferences.hideSidebar) setSidebarVisible(false);
-                      if (!preferences.showSidebarOnMobile)
-                        setMobileOverride(false);
-                    }
-                  : undefined
-              }
+              onToggleCollapsed={toggleCollapsed}
+              position={position}
             />
-            {!horizontal && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={
-                  preferences.sidebarCollapsed
-                    ? "Expand sidebar"
-                    : "Collapse sidebar"
-                }
-                className={`absolute top-4 size-7 rounded-full border border-border bg-surface shadow-md ${
-                  position === "right" ? "-left-3" : "-right-3"
-                }`}
-                onClick={toggleCollapsed}
-              >
-                {preferences.sidebarCollapsed ? (
-                  position === "right" ? (
-                    <ChevronLeft size={15} />
-                  ) : (
-                    <ChevronRight size={15} />
-                  )
-                ) : position === "right" ? (
-                  <ChevronRight size={15} />
-                ) : (
-                  <ChevronLeft size={15} />
-                )}
-              </Button>
-            )}
           </Sidebar>
         )}
 
@@ -457,43 +491,27 @@ export function AppShell({ children }: { children: ReactNode }) {
               role={role}
               onRoleChange={setRole}
               onNavigate={() => setMobileOverride(false)}
-              onToggleVisibility={
-                preferences.hideSidebar || !preferences.showSidebarOnMobile
-                  ? () => {
-                      if (preferences.hideSidebar) setSidebarVisible(false);
-                      if (!preferences.showSidebarOnMobile)
-                        setMobileOverride(false);
-                    }
-                  : undefined
-              }
+              onToggleCollapsed={toggleCollapsed}
+              position={position}
             />
           </Sidebar>
         )}
 
-        {preferences.hideSidebar &&
-          (!sidebarVisible ||
-            (!preferences.showSidebarOnMobile && !mobileOverride)) && (
-            <Button
-              variant="secondary"
-              size="icon"
-              aria-label="Show sidebar"
-              className={`fixed z-50 rounded-xl border border-border bg-surface shadow-lg ${
-                position === "left"
-                  ? "left-0 top-1/2 -translate-y-1/2"
-                  : position === "right"
-                    ? "right-0 top-1/2 -translate-y-1/2"
-                    : position === "top"
-                      ? "left-1/2 top-0 -translate-x-1/2"
-                      : "bottom-0 left-1/2 -translate-x-1/2"
-              }`}
-              onClick={() => {
-                setSidebarVisible(true);
-                setMobileOverride(true);
-              }}
-            >
-              <Menu size={17} />
-            </Button>
-          )}
+        {horizontal && !sidebarVisible && (
+          <Button
+            variant="secondary"
+            size="icon"
+            aria-label="Show sidebar"
+            className={`fixed z-50 rounded-xl border border-border bg-surface shadow-lg ${
+              position === "top"
+                ? "left-1/2 top-0 -translate-x-1/2"
+                : "bottom-0 left-1/2 -translate-x-1/2"
+            }`}
+            onClick={() => setSidebarVisible(true)}
+          >
+            <Menu size={17} />
+          </Button>
+        )}
 
         {!preferences.showSidebarOnMobile && sidebarVisible && (
           <Button

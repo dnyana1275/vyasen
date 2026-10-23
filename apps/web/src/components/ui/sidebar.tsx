@@ -38,7 +38,7 @@ export function SidebarFooter({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mt-auto shrink-0", className)} {...props} />;
+  return <div className={cn("shrink-0", className)} {...props} />;
 }
 
 export function SidebarGroupLabel({

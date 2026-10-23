@@ -41,7 +41,7 @@ export function ProfileMenu({
         <Avatar className="size-9">
           <AvatarFallback>AK</AvatarFallback>
         </Avatar>
-        <span className={compact ? "sr-only" : "hidden min-w-0 sm:block"}>
+        <span className={compact ? "sr-only" : "min-w-0"}>
           <span className="block text-sm font-semibold">{profileName}</span>
           <span className="block text-xs text-muted-foreground">
             {roleLabels[role]}
@@ -50,7 +50,7 @@ export function ProfileMenu({
         {!compact && (
           <ChevronDown
             size={15}
-            className="hidden text-muted-foreground sm:block"
+            className="text-muted-foreground"
           />
         )}
       </DropdownMenuTrigger>
