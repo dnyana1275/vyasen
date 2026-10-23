@@ -67,7 +67,7 @@ function SidebarContents({
             : collapsed
               ? "justify-center"
               : "justify-between"
-        }`}
+        } ${!horizontal ? "w-full" : ""}`}
       >
         <span
           className={`flex min-w-0 items-center gap-2 ${
@@ -194,7 +194,7 @@ function SidebarContents({
 
               const content = (
                 <>
-                  <Icon size={18} style={iconStyle} />
+                  <Icon size={20} style={iconStyle} />
                   <span className={labelClass}>{item.label}</span>
                   {shortcutLabel && !horizontal && !collapsed && (
                     <span className="ml-auto hidden rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">
@@ -270,7 +270,9 @@ function SidebarContents({
         className={`flex gap-2 ${
           horizontal
             ? "ml-auto h-16 shrink-0 flex-row items-center px-2 sm:px-4"
-            : "mt-auto shrink-0 flex-col items-stretch px-1 pb-2 pt-2"
+            : `mt-auto w-full shrink-0 flex-col px-1 pb-2 pt-2 ${
+                collapsed ? "items-center" : "items-stretch"
+              }`
         }`}
       >
         <ProfileMenu
@@ -285,14 +287,16 @@ function SidebarContents({
               aria-label="Settings"
               onClick={onNavigate}
               className={`flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                collapsed || horizontal ? "justify-center px-0" : ""
+                collapsed || horizontal
+                  ? "size-11 shrink-0 justify-center p-0"
+                  : ""
               } ${
                 pathname.startsWith("/settings")
                   ? "bg-accent/15 text-accent"
                   : "bg-surface/45 text-muted-foreground"
               }`}
             >
-              <Settings size={18} />
+              <Settings size={20} />
               {!collapsed && !horizontal && (
                 <span>Settings</span>
               )}
@@ -407,9 +411,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   } ${hiddenTransform} ${
     !preferences.showSidebarOnMobile && !mobileOverride ? "max-sm:hidden" : ""
   } ${!sidebarVisible ? "invisible" : ""}`;
-  const contentPosition = horizontal && !sidebarVisible
-    ? ""
-    : position === "left"
+  const contentPosition =
+    horizontal && !sidebarVisible
+      ? ""
+      : position === "left"
       ? preferences.sidebarCollapsed
         ? "ml-16"
         : `ml-64 max-sm:ml-0 ${
@@ -436,6 +441,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ? "max-sm:pb-0"
                 : ""
             }`;
+  const frameHeightClass =
+    horizontal && sidebarVisible
+      ? preferences.showSidebarOnMobile
+        ? "h-[calc(100dvh-5rem)]"
+        : "h-[calc(100dvh-5rem)] max-sm:h-[calc(100dvh-1rem)]"
+      : "h-[calc(100dvh-1rem)]";
 
   function toggleCollapsed() {
     updatePreference("sidebarCollapsed", !preferences.sidebarCollapsed);
@@ -443,7 +454,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className={`min-h-screen bg-background text-foreground ${
+      className={`min-h-screen bg-surface text-foreground ${
         position === "bottom" ? "flex flex-col" : ""
       }`}
       data-sidebar-position={position}
@@ -469,12 +480,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
 
         <div
-          className={`${contentPosition} ${position === "bottom" ? "order-1" : ""}`}
+          className={`${contentPosition} p-2 ${
+            position === "bottom" ? "order-1" : ""
+          }`}
         >
           <main
-            className={`mx-auto min-h-screen ${contentLayout} px-4 py-7 sm:px-6 lg:px-8`}
+            className={`${frameHeightClass} overflow-hidden rounded-2xl border border-border bg-background shadow-xl`}
           >
-            {children}
+            <div className="h-full overflow-y-auto overscroll-contain">
+              <div
+                className={`mx-auto w-full ${contentLayout} px-4 py-7 sm:px-6 lg:px-8`}
+              >
+                {children}
+              </div>
+            </div>
           </main>
         </div>
 

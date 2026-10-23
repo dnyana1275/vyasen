@@ -35,10 +35,10 @@ export function ProfileMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={`flex cursor-pointer items-center gap-2 rounded-xl bg-surface/45 p-1.5 text-left outline-none transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent ${compact ? "justify-center" : ""}`}
+        className={`flex cursor-pointer items-center gap-2 rounded-xl bg-surface/45 p-1.5 text-left outline-none transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent ${compact ? "size-11 shrink-0 justify-center p-0" : ""}`}
         aria-label="Open user profile menu"
       >
-        <Avatar className="size-9">
+        <Avatar className={compact ? "size-10" : "size-9"}>
           <AvatarFallback>AK</AvatarFallback>
         </Avatar>
         <span className={compact ? "sr-only" : "min-w-0"}>

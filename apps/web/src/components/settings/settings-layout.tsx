@@ -11,11 +11,11 @@ export function SettingsLayout() {
     : "appearance-settings-tab";
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto">
       <header>
         {/* <p className="text-sm text-muted-foreground">Workspace preferences</p> */}
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Manage your personal preferences and interface experience.
         </p>
       </header>
