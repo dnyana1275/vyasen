@@ -6,13 +6,16 @@ import { RouterProvider } from "@tanstack/react-router";
 import { queryClient } from "@/lib/query-client";
 import { router } from "@/router";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { FocusVisibility } from "@/accessibility/FocusVisibility";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <RouterProvider router={router} />
+        <FocusVisibility>
+          <RouterProvider router={router} />
+        </FocusVisibility>
       </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>,

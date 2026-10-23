@@ -1,57 +1,169 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import {
+  colorThemeIds,
+  defaultUiPreferences,
+  uiPreferencesSchema,
+  type UiPreferences,
+} from "@school-sms/contracts";
 
-export type ColorMode = "light" | "dark";
-export type AccentColor = "indigo" | "ocean" | "rose" | "emerald";
+const PREFERENCES_KEY = "school-sms-ui-preferences";
 
 interface ThemeContextValue {
-  colorMode: ColorMode;
-  accent: AccentColor;
-  setColorMode: (mode: ColorMode) => void;
-  setAccent: (accent: AccentColor) => void;
+  preferences: UiPreferences;
+  updatePreference: <Key extends keyof UiPreferences>(
+    key: Key,
+    value: UiPreferences[Key],
+  ) => void;
+  resetPreferences: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-const colorModes: ColorMode[] = ["light", "dark"];
-const accentColors: AccentColor[] = ["indigo", "ocean", "rose", "emerald"];
 
-function readPreference<T extends string>(
-  key: string,
-  allowedValues: readonly T[],
-  fallback: T,
-): T {
-  if (typeof window === "undefined") return fallback;
-  const storedValue = window.localStorage.getItem(key);
-  return allowedValues.find((value) => value === storedValue) ?? fallback;
+function readPreferences(): UiPreferences {
+  try {
+    const storedValue = window.localStorage.getItem(PREFERENCES_KEY);
+    if (!storedValue) return defaultUiPreferences;
+
+    const result = uiPreferencesSchema.safeParse(JSON.parse(storedValue));
+    if (result.success) return { ...result.data, fullScreen: false };
+
+    console.warn(
+      "Saved appearance settings were invalid; defaults were restored.",
+    );
+  } catch (error) {
+    console.warn(
+      "Could not read saved appearance settings; defaults were restored.",
+      error,
+    );
+  }
+  return defaultUiPreferences;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [colorMode, setColorMode] = useState<ColorMode>(() =>
-    readPreference("school-sms-color-mode", colorModes, "dark"),
-  );
-  const [accent, setAccent] = useState<AccentColor>(() =>
-    readPreference("school-sms-accent", accentColors, "indigo"),
-  );
+  const [preferences, setPreferences] =
+    useState<UiPreferences>(readPreferences);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = colorMode;
-    window.localStorage.setItem("school-sms-color-mode", colorMode);
-  }, [colorMode]);
+    if (!preferences.themeRotationEnabled) return;
+    try {
+      if (
+        window.sessionStorage.getItem("school-sms-theme-rotated") === "true"
+      ) {
+        return;
+      }
+      const eligibleThemes = preferences.themeRotationPool.filter((theme) =>
+        colorThemeIds.includes(theme),
+      );
+      const themes = eligibleThemes.length
+        ? eligibleThemes
+        : [preferences.colorTheme];
+      const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+      window.sessionStorage.setItem("school-sms-theme-rotated", "true");
+      setPreferences((current) => ({ ...current, colorTheme: randomTheme }));
+    } catch (error) {
+      console.warn(
+        "Could not rotate the appearance theme for this session.",
+        error,
+      );
+    }
+  }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.accent = accent;
-    window.localStorage.setItem("school-sms-accent", accent);
-  }, [accent]);
+    try {
+      window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+    } catch (error) {
+      console.warn(
+        "Could not save appearance settings in this browser.",
+        error,
+      );
+    }
+  }, [preferences]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const applyColorMode = () => {
+      const effectiveMode =
+        preferences.colorMode === "system"
+          ? window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light"
+          : preferences.colorMode;
+      root.dataset.theme = effectiveMode;
+    };
+
+    applyColorMode();
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaQuery.addEventListener("change", applyColorMode);
+    return () => mediaQuery.removeEventListener("change", applyColorMode);
+  }, [preferences.colorMode]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.colorTheme = preferences.colorTheme;
+    root.dataset.readingMode =
+      preferences.readingModeEnabled || preferences.readingModePreview
+        ? "on"
+        : "off";
+    root.dataset.scrollbars = preferences.scrollbarVisibility;
+    root.dataset.scrollbarStyle = preferences.scrollbarStyle;
+    root.dataset.controlRoundness = preferences.controlRoundness;
+    root.dataset.elevatedSurfaces = String(preferences.elevatedSurfaces);
+    root.dataset.pageTabColors = preferences.pageTabColors;
+    root.style.setProperty(
+      "--reading-temperature",
+      `${(preferences.readingTemperature - 50) * 0.32}deg`,
+    );
+    root.style.setProperty(
+      "--reading-tint-opacity",
+      `${Math.abs(preferences.readingTemperature - 50) / 250}`,
+    );
+    root.style.setProperty(
+      "--reading-tint",
+      preferences.readingTemperature < 50
+        ? "hsl(205 70% 55%)"
+        : "hsl(34 95% 58%)",
+    );
+    root.style.setProperty(
+      "--reading-texture-opacity",
+      `${
+        (preferences.readingModeEnabled || preferences.readingModePreview
+          ? preferences.readingTexture
+          : 0) / 100
+      }`,
+    );
+    root.style.setProperty(
+      "--reading-grain-size",
+      `${preferences.readingGrainSize}px`,
+    );
+  }, [preferences]);
+
+  const updatePreference = useCallback(
+    <Key extends keyof UiPreferences>(key: Key, value: UiPreferences[Key]) => {
+      setPreferences((current) => ({ ...current, [key]: value }));
+    },
+    [],
+  );
+
+  const resetPreferences = useCallback(() => {
+    setPreferences(defaultUiPreferences);
+    try {
+      window.sessionStorage.removeItem("school-sms-theme-rotated");
+    } catch (error) {
+      console.warn("Could not reset the session theme rotation.", error);
+    }
+  }, []);
 
   const value = useMemo(
-    () => ({ colorMode, accent, setColorMode, setAccent }),
-    [colorMode, accent],
+    () => ({ preferences, updatePreference, resetPreferences }),
+    [preferences, updatePreference, resetPreferences],
   );
 
   return (

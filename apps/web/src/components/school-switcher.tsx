@@ -13,7 +13,7 @@ import {
 
 const schools = ["Greenwood Academy", "Cedar Grove School"];
 
-export function SchoolSwitcher() {
+export function SchoolSwitcher({ compact = false }: { compact?: boolean }) {
   const [selectedSchool, setSelectedSchool] = useState(schools[0]);
 
   return (
@@ -21,13 +21,20 @@ export function SchoolSwitcher() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto max-w-64 justify-start gap-3 px-2 py-1.5 text-left"
+          size={compact ? "icon" : "default"}
+          className={
+            compact
+              ? "size-10 shrink-0"
+              : "h-auto max-w-64 justify-start gap-3 px-2 py-1.5 text-left"
+          }
           aria-label={`Switch school. Current school: ${selectedSchool}`}
         >
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
             <School size={18} />
           </span>
-          <span className="hidden min-w-0 flex-1 sm:block">
+          <span
+            className={compact ? "sr-only" : "hidden min-w-0 flex-1 sm:block"}
+          >
             <span className="block truncate text-sm font-semibold">
               {selectedSchool}
             </span>
@@ -35,10 +42,12 @@ export function SchoolSwitcher() {
               School workspace
             </span>
           </span>
-          <ChevronsUpDown
-            size={15}
-            className="hidden text-muted-foreground sm:block"
-          />
+          {!compact && (
+            <ChevronsUpDown
+              size={15}
+              className="hidden text-muted-foreground sm:block"
+            />
+          )}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-64">

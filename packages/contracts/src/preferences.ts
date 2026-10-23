@@ -1,0 +1,97 @@
+import { z } from "zod";
+
+export const colorThemeIds = [
+  "ocean",
+  "midnight",
+  "lilac",
+  "rose",
+  "ember",
+  "sunlit",
+  "grove",
+  "graphite",
+] as const;
+
+export const colorThemeSchema = z.enum(colorThemeIds);
+
+export const appearancePreferenceSchema = z.object({
+  colorMode: z.enum(["light", "dark", "system"]),
+  colorTheme: colorThemeSchema,
+  themeRotationEnabled: z.boolean(),
+  themeRotationPool: z.array(colorThemeSchema).min(1),
+  readingModeEnabled: z.boolean(),
+  readingModePreview: z.boolean(),
+  readingTemperature: z.number().int().min(0).max(100),
+  readingTexture: z.number().int().min(0).max(100),
+  readingGrainSize: z.number().int().min(1).max(10),
+  scrollbarVisibility: z.enum(["visible", "hidden"]),
+  scrollbarStyle: z.enum(["classic", "minimal", "floating"]),
+  elasticScrollerEnabled: z.boolean(),
+  elasticScrollerDepth: z.enum(["flat", "raised"]),
+  elasticScrollerDirectionIcon: z.enum(["arrow", "chevron", "classic"]),
+  elasticScrollerLockSide: z.enum(["left", "right"]),
+  elasticScrollerUnlockSide: z.enum(["left", "right"]),
+  elasticScrollerAnimateDirection: z.boolean(),
+  elasticScrollerHideDelay: z.number().int().min(1).max(10),
+  controlRoundness: z.enum(["sharp", "rounded", "pill"]),
+  elevatedSurfaces: z.boolean(),
+  shortcutKeyStyle: z.enum(["system", "mac", "windows"]),
+  pageTabColors: z.enum(["sidebar", "independent"]),
+  fullScreen: z.boolean(),
+});
+
+export const sidebarPreferenceSchema = z.object({
+  sidebarPosition: z.enum(["left", "right", "top", "bottom"]),
+  sidebarHeaderBehavior: z.enum(["fixed", "scroll", "hide-on-scroll"]),
+  sidebarIconStyle: z.enum(["monochrome", "multicolor"]),
+  sidebarIconColor: z.string().regex(/^#[\da-f]{6}$/i),
+  mainContentLayout: z.enum(["contained", "wide", "full"]),
+  showKeyboardShortcuts: z.boolean(),
+  elevatedSidebarMenus: z.boolean(),
+  showSidebarOnMobile: z.boolean(),
+  hideSidebar: z.boolean(),
+  sidebarCollapsed: z.boolean(),
+});
+
+export const uiPreferencesSchema = appearancePreferenceSchema.extend(
+  sidebarPreferenceSchema.shape,
+);
+
+export type AppearancePreferences = z.infer<typeof appearancePreferenceSchema>;
+export type SidebarPreferences = z.infer<typeof sidebarPreferenceSchema>;
+export type UiPreferences = z.infer<typeof uiPreferencesSchema>;
+
+export const defaultUiPreferences: UiPreferences = {
+  colorMode: "dark",
+  colorTheme: "ocean",
+  themeRotationEnabled: false,
+  themeRotationPool: ["ocean", "midnight", "lilac"],
+  readingModeEnabled: false,
+  readingModePreview: false,
+  readingTemperature: 50,
+  readingTexture: 0,
+  readingGrainSize: 3,
+  scrollbarVisibility: "visible",
+  scrollbarStyle: "minimal",
+  elasticScrollerEnabled: true,
+  elasticScrollerDepth: "raised",
+  elasticScrollerDirectionIcon: "classic",
+  elasticScrollerLockSide: "right",
+  elasticScrollerUnlockSide: "left",
+  elasticScrollerAnimateDirection: true,
+  elasticScrollerHideDelay: 2,
+  controlRoundness: "rounded",
+  elevatedSurfaces: true,
+  shortcutKeyStyle: "system",
+  pageTabColors: "sidebar",
+  fullScreen: false,
+  sidebarPosition: "left",
+  sidebarHeaderBehavior: "fixed",
+  sidebarIconStyle: "monochrome",
+  sidebarIconColor: "#818cf8",
+  mainContentLayout: "wide",
+  showKeyboardShortcuts: true,
+  elevatedSidebarMenus: true,
+  showSidebarOnMobile: true,
+  hideSidebar: false,
+  sidebarCollapsed: false,
+};

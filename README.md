@@ -39,6 +39,13 @@ packages/
 
 The router uses a pathless authenticated route group for the dashboard and
 settings pages, so their browser paths are `/dashboard` and `/settings`.
+Settings include `/settings/appearance` and `/settings/sidebar`. Appearance
+and sidebar preferences are validated and saved in the browser's local storage;
+they are not yet synchronized between devices or stored per user or school.
+The sidebar supports left, right, top, and bottom placement, and its preview
+navigation changes with the selected demo role.
+
 The current profile role selector and school switcher are visual previews only:
 authentication, role permissions, and tenant isolation must be enforced by
-future backend services, not by this static UI.
+future backend services, not by this static UI. Role-based navigation is not an
+authorization boundary.
