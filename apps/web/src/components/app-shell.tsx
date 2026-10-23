@@ -61,7 +61,7 @@ function SidebarContents({
   return (
     <>
       <SidebarHeader
-        className={`group relative flex h-16 shrink-0 items-center gap-3 px-2 ${
+        className={`relative flex h-16 shrink-0 items-center gap-3 px-2 ${
           horizontal
             ? "flex-row sm:px-4"
             : collapsed
@@ -72,13 +72,13 @@ function SidebarContents({
         <span
           className={`flex min-w-0 items-center gap-2 ${
             collapsed
-              ? "group-hover:invisible group-focus-within:invisible"
+              ? "group-hover/sidebar:invisible group-focus-within/sidebar:invisible"
               : ""
           }`}
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-accent text-accent-foreground shadow-lg shadow-accent/20">
             {collapsed && !horizontal ? (
-              <span className="text-lg font-bold">S</span>
+              <span className="text-2xl font-bold leading-none">S</span>
             ) : (
               <GraduationCap size={22} />
             )}
@@ -104,7 +104,7 @@ function SidebarContents({
             aria-expanded={!collapsed}
             className={`size-8 shrink-0 text-muted-foreground ${
               collapsed
-                ? "absolute right-2 hidden group-hover:inline-flex group-focus-within:inline-flex"
+                ? "absolute right-2 hidden group-hover/sidebar:inline-flex group-focus-within/sidebar:inline-flex"
                 : ""
             }`}
             onClick={onToggleCollapsed}
@@ -289,7 +289,7 @@ function SidebarContents({
               } ${
                 pathname.startsWith("/settings")
                   ? "bg-accent/15 text-accent"
-                  : "text-muted-foreground"
+                  : "bg-surface/45 text-muted-foreground"
               }`}
             >
               <Settings size={18} />
@@ -398,7 +398,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ? "-translate-y-full"
           : "translate-y-full"
     : "";
-  const dockClass = `z-40 flex fixed ${dockBase} border-border bg-background/95 transition-transform duration-200 ${
+  const dockClass = `group/sidebar z-40 flex fixed ${dockBase} border-border bg-background/95 transition-transform duration-200 ${
     horizontal
       ? "flex-row items-center border-r-0 border-b px-2 sm:px-4"
       : `flex-col px-2 sm:px-3 ${

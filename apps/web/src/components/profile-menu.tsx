@@ -35,7 +35,7 @@ export function ProfileMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={`flex items-center gap-2 rounded-xl p-1.5 text-left outline-none hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent ${compact ? "justify-center" : ""}`}
+        className={`flex cursor-pointer items-center gap-2 rounded-xl bg-surface/45 p-1.5 text-left outline-none transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent ${compact ? "justify-center" : ""}`}
         aria-label="Open user profile menu"
       >
         <Avatar className="size-9">
