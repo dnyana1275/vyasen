@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   ArrowDown,
   ArrowLeft,
@@ -49,42 +50,89 @@ const positionChoices = [
 
 export function SidebarSettings() {
   const { preferences, updatePreference } = useTheme();
-  const headerBehavior =
-    preferences.sidebarPosition === "left" ||
-    preferences.sidebarPosition === "right"
-      ? "fixed"
-      : "hide-on-scroll";
+  const [isSmallScreen, setIsSmallScreen] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 639px)").matches,
+  );
+  const [canResizeSidebar, setCanResizeSidebar] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 768px)").matches,
+  );
+
+  useEffect(() => {
+    const smallScreenQuery = window.matchMedia("(max-width: 639px)");
+    const resizeSidebarQuery = window.matchMedia("(min-width: 768px)");
+    const updateScreenSizes = () => {
+      setIsSmallScreen(smallScreenQuery.matches);
+      setCanResizeSidebar(resizeSidebarQuery.matches);
+    };
+    updateScreenSizes();
+    smallScreenQuery.addEventListener("change", updateScreenSizes);
+    resizeSidebarQuery.addEventListener("change", updateScreenSizes);
+    return () => {
+      smallScreenQuery.removeEventListener("change", updateScreenSizes);
+      resizeSidebarQuery.removeEventListener("change", updateScreenSizes);
+    };
+  }, []);
+
+  const horizontal = isSmallScreen
+    ? true
+    : preferences.sidebarPosition === "top" ||
+      preferences.sidebarPosition === "bottom";
+  const activePosition = isSmallScreen
+    ? preferences.sidebarMobilePosition
+    : preferences.sidebarPosition;
 
   return (
     <div className="space-y-5 py-6">
       <SettingsSection
         title="Sidebar"
-        description="Choose how navigation and the main content fit your workspace."
+        description="Choose how navigation appears and fits your workspace."
       >
         <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4">
           <h3 className="text-sm font-semibold">Sidebar position</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Choose where the school navigation appears on every screen size.
+            {isSmallScreen
+              ? "Choose the top or bottom position for small screens."
+              : "Choose where the school navigation appears on larger screens."}
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {positionChoices.map(({ id, label, detail, icon: Icon }) => (
               <button
                 key={id}
                 type="button"
-                aria-pressed={preferences.sidebarPosition === id}
+                aria-pressed={activePosition === id}
                 onClick={() => {
-                  updatePreference("sidebarPosition", id);
-                  updatePreference(
-                    "sidebarHeaderBehavior",
-                    id === "left" || id === "right"
-                      ? "fixed"
-                      : "hide-on-scroll",
-                  );
+                  if (isSmallScreen) {
+                    if (id === "top" || id === "bottom") {
+                      updatePreference("sidebarMobilePosition", id);
+                    }
+                    return;
+                  }
+                  if (preferences.sidebarPosition !== id) {
+                    const currentIsHorizontal =
+                      preferences.sidebarPosition === "top" ||
+                      preferences.sidebarPosition === "bottom";
+                    const nextIsHorizontal = id === "top" || id === "bottom";
+                    updatePreference("sidebarPosition", id);
+                    if (currentIsHorizontal !== nextIsHorizontal) {
+                      updatePreference(
+                        "sidebarBehavior",
+                        nextIsHorizontal ? "hide-on-scroll" : "pinned",
+                      );
+                    }
+                  }
                 }}
                 className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
-                  preferences.sidebarPosition === id
+                  activePosition === id
                     ? "border-accent bg-accent/10"
                     : "border-border bg-background hover:border-accent/50"
+                } ${
+                  isSmallScreen && (id === "left" || id === "right")
+                    ? "hidden"
+                    : ""
                 }`}
               >
                 <span className="grid size-9 place-items-center rounded-xl bg-surface text-accent">
@@ -96,7 +144,7 @@ export function SidebarSettings() {
                     {detail}
                   </span>
                 </span>
-                {preferences.sidebarPosition === id && (
+                {activePosition === id && (
                   <Check size={16} className="text-accent" />
                 )}
               </button>
@@ -104,33 +152,85 @@ export function SidebarSettings() {
           </div>
         </div>
         <div>
-          <h3 className="text-sm font-semibold">Header behavior</h3>
+          <h3 className="text-sm font-semibold">Sidebar behavior</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            Choose how the navigation dock behaves while the page scrolls.
+            {horizontal
+              ? "Pin top or bottom navigation, or hide it while scrolling."
+              : "Pin the sidebar in place, or reveal it only when needed."}
           </p>
           <div className="mt-3">
-            <ChoiceCards
-              value={headerBehavior}
+            {isSmallScreen ? (
+              <ChoiceCards
+                value={preferences.sidebarMobileBehavior}
+                onChange={(value) =>
+                  updatePreference("sidebarMobileBehavior", value)
+                }
+                choices={[
+                  {
+                    id: "pinned",
+                    label: "Pinned",
+                    detail: "Keep navigation in view",
+                  },
+                  {
+                    id: "hide-on-scroll",
+                    label: "Hide while scrolling",
+                    detail: "Reveal when scrolling up",
+                  },
+                ]}
+              />
+            ) : horizontal ? (
+              <ChoiceCards
+                value={preferences.sidebarBehavior}
+                onChange={(value) =>
+                  updatePreference("sidebarBehavior", value)
+                }
+                choices={[
+                  {
+                    id: "pinned",
+                    label: "Pinned",
+                    detail: "Keep navigation in view",
+                  },
+                  {
+                    id: "hide-on-scroll",
+                    label: "Hide while scrolling",
+                    detail: "Reveal when scrolling up",
+                  },
+                ]}
+              />
+            ) : (
+              <ChoiceCards
+                value={preferences.sidebarBehavior}
+                onChange={(value) =>
+                  updatePreference("sidebarBehavior", value)
+                }
+                choices={[
+                  {
+                    id: "pinned",
+                    label: "Pinned",
+                    detail: "Keep the sidebar in place",
+                  },
+                  {
+                    id: "hidden",
+                    label: "Hidden",
+                    detail: "Reveal from the screen edge",
+                  },
+                ]}
+              />
+            )}
+          </div>
+          {!horizontal && canResizeSidebar && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              On medium screens and larger, drag the sidebar edge to resize it
+              from 64 to 500 pixels.
+            </p>
+          )}
+          <div className="mt-5 border-t border-border pt-4">
+            <SettingToggle
+              label="Floating navigation button"
+              description="Show a draggable circular button over the content when navigation is hidden or auto-hidden."
+              checked={preferences.floatingSidebarButtonEnabled}
               onChange={(value) =>
-                updatePreference("sidebarHeaderBehavior", value)
-              }
-              choices={
-                preferences.sidebarPosition === "left" ||
-                preferences.sidebarPosition === "right"
-                  ? [
-                      {
-                        id: "fixed",
-                        label: "Pinned",
-                        detail: "Keep navigation in view",
-                      },
-                    ]
-                  : [
-                      {
-                        id: "hide-on-scroll",
-                        label: "Auto-hide",
-                        detail: "Hide while scrolling down",
-                      },
-                    ]
+                updatePreference("floatingSidebarButtonEnabled", value)
               }
             />
           </div>
@@ -248,12 +348,6 @@ export function SidebarSettings() {
           description="Add subtle edge light and depth to sidebar menu items."
           checked={preferences.elevatedSidebarMenus}
           onChange={(value) => updatePreference("elevatedSidebarMenus", value)}
-        />
-        <SettingToggle
-          label="Show sidebar on mobile"
-          description="Keep the selected navigation position visible on narrow screens."
-          checked={preferences.showSidebarOnMobile}
-          onChange={(value) => updatePreference("showSidebarOnMobile", value)}
         />
       </SettingsSection>
 

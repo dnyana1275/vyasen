@@ -372,7 +372,7 @@ export function AppearanceSettings() {
         title="Display mode"
         description="Choose a light or dark workspace, or follow your device."
       >
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {displayModes.map(({ id, label, detail, icon: Icon }) => {
             const selected = preferences.colorMode === id;
             return (

@@ -23,17 +23,19 @@ const roleLabels: Record<SchoolRole, string> = {
 interface ProfileMenuProps {
   role: SchoolRole;
   onRoleChange: (role: SchoolRole) => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ProfileMenu({
   role,
   onRoleChange,
+  onOpenChange,
   compact = false,
 }: ProfileMenuProps & { compact?: boolean }) {
   const [profileName] = useState("Avery Kim");
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         className={`flex cursor-pointer items-center gap-2 rounded-xl bg-surface/45 p-1.5 text-left outline-none transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent ${compact ? "size-11 shrink-0 justify-center p-0" : ""}`}
         aria-label="Open user profile menu"

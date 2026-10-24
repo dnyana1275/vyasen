@@ -1,4 +1,12 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type UIEvent,
+} from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   GraduationCap,
@@ -8,6 +16,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Settings,
+  X,
 } from "lucide-react";
 import type { SchoolRole } from "@school-sms/contracts";
 
@@ -34,19 +43,31 @@ import {
 import { useTheme } from "@/providers/theme-provider";
 
 type SidebarPosition = "left" | "right" | "top" | "bottom";
+type FloatingButtonPosition = { left: number; top: number };
+
+const FLOATING_BUTTON_SIZE = 48;
+const FLOATING_BUTTON_MARGIN = 12;
 
 function SidebarContents({
   collapsed,
+  canToggleCollapsed,
+  hiddenMode,
   horizontal,
+  onCloseHidden,
   onNavigate,
+  onProfileMenuOpen,
   onRoleChange,
   onToggleCollapsed,
   role,
   position,
 }: {
   collapsed: boolean;
+  canToggleCollapsed: boolean;
+  hiddenMode: boolean;
   horizontal: boolean;
+  onCloseHidden: () => void;
   onNavigate?: () => void;
+  onProfileMenuOpen: () => void;
   onRoleChange: (role: SchoolRole) => void;
   onToggleCollapsed: () => void;
   role: SchoolRole;
@@ -88,7 +109,7 @@ function SidebarContents({
               <span className="block truncate text-sm font-bold tracking-tight">
                 School SMS
               </span>
-              {!horizontal && (
+              {!horizontal && (hiddenMode || canToggleCollapsed) && (
                 <span className="block text-xs text-muted-foreground">
                   School workspace
                 </span>
@@ -100,16 +121,24 @@ function SidebarContents({
           <Button
             variant="ghost"
             size="icon"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!collapsed}
+            aria-label={
+              hiddenMode
+                ? "Close sidebar"
+                : collapsed
+                  ? "Expand sidebar"
+                  : "Collapse sidebar"
+            }
+            aria-expanded={hiddenMode ? true : !collapsed}
             className={`size-8 shrink-0 text-muted-foreground ${
-              collapsed
+              collapsed && !hiddenMode
                 ? "absolute right-2 hidden group-hover/sidebar:inline-flex group-focus-within/sidebar:inline-flex"
                 : ""
             }`}
-            onClick={onToggleCollapsed}
+            onClick={hiddenMode ? onCloseHidden : onToggleCollapsed}
           >
-            {position === "right" ? (
+            {hiddenMode ? (
+              <X size={17} />
+            ) : position === "right" ? (
               collapsed ? (
                 <PanelRightOpen size={17} />
               ) : (
@@ -278,6 +307,9 @@ function SidebarContents({
         <ProfileMenu
           role={role}
           onRoleChange={onRoleChange}
+          onOpenChange={(open) => {
+            if (open) onProfileMenuOpen();
+          }}
           compact={collapsed || horizontal}
         />
         <Tooltip>
@@ -327,18 +359,83 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { preferences, updatePreference } = useTheme();
   const [role, setRole] = useState<SchoolRole>("admin");
   const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [mobileOverride, setMobileOverride] = useState(false);
+  const [hiddenSidebarOpen, setHiddenSidebarOpen] = useState(false);
   const [dockHidden, setDockHidden] = useState(false);
-  const horizontal =
-    preferences.sidebarPosition === "top" ||
-    preferences.sidebarPosition === "bottom";
-  const position = preferences.sidebarPosition as SidebarPosition;
+  const [viewportWidth, setViewportWidth] = useState(
+    () => (typeof window === "undefined" ? 1024 : window.innerWidth),
+  );
+  const [viewportHeight, setViewportHeight] = useState(
+    () => (typeof window === "undefined" ? 768 : window.innerHeight),
+  );
+  const [hasCoarsePointer, setHasCoarsePointer] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(any-pointer: coarse)").matches,
+  );
+  const [resizingWidth, setResizingWidth] = useState<number | null>(null);
+  const resizeStart = useRef<{ pointerX: number; width: number } | null>(null);
+  const floatingButtonDrag = useRef<{
+    offsetX: number;
+    offsetY: number;
+    pointerX: number;
+    pointerY: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressFloatingButtonClick = useRef(false);
+  const [draggingFloatingButtonPosition, setDraggingFloatingButtonPosition] =
+    useState<FloatingButtonPosition | null>(null);
+  const previousScrollTop = useRef(0);
+  const isSmallScreen = viewportWidth < 640;
+  const isTabletWidth = viewportWidth >= 640 && viewportWidth < 768;
+  const sidebarBehavior = isSmallScreen
+    ? preferences.sidebarMobileBehavior
+    : preferences.sidebarBehavior;
+  const position: SidebarPosition = isSmallScreen
+    ? preferences.sidebarMobilePosition
+    : preferences.sidebarPosition;
+  const horizontal = position === "top" || position === "bottom";
+  const hiddenMode = !horizontal && sidebarBehavior === "hidden";
+  const tabletCollapsed =
+    isTabletWidth && !horizontal && sidebarBehavior === "pinned";
+  const collapsed =
+    !horizontal &&
+    (tabletCollapsed ||
+      preferences.sidebarWidth <= 64 ||
+      (!hiddenMode && preferences.sidebarCollapsed));
+  const sidebarWidth = hiddenMode
+    ? (resizingWidth ?? preferences.sidebarWidth)
+    : collapsed
+      ? 64
+      : (resizingWidth ?? preferences.sidebarWidth);
+  const dockIsVisible = horizontal
+    ? sidebarVisible
+    : hiddenMode
+      ? hiddenSidebarOpen
+      : true;
+
+  useEffect(() => {
+    const updateViewportSize = () => {
+      setViewportWidth(window.innerWidth);
+      setViewportHeight(window.innerHeight);
+    };
+    window.addEventListener("resize", updateViewportSize);
+    return () => window.removeEventListener("resize", updateViewportSize);
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(any-pointer: coarse)");
+    const updatePointerType = () => setHasCoarsePointer(mediaQuery.matches);
+    updatePointerType();
+    mediaQuery.addEventListener("change", updatePointerType);
+    return () => mediaQuery.removeEventListener("change", updatePointerType);
+  }, []);
 
   useEffect(() => {
     setSidebarVisible(true);
-    setMobileOverride(false);
+    setHiddenSidebarOpen(false);
     setDockHidden(false);
-  }, [position]);
+    previousScrollTop.current = 0;
+  }, [isSmallScreen, isTabletWidth, position, sidebarBehavior]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -350,34 +447,39 @@ export function AppShell({ children }: { children: ReactNode }) {
         event.preventDefault();
         if (horizontal) {
           setSidebarVisible((visible) => !visible);
-        } else {
+        } else if (hiddenMode) {
+          setHiddenSidebarOpen((open) => !open);
+        } else if (!tabletCollapsed) {
           updatePreference("sidebarCollapsed", !preferences.sidebarCollapsed);
+        } else {
+          return;
         }
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
+    hiddenMode,
     horizontal,
     preferences.sidebarCollapsed,
+    tabletCollapsed,
     updatePreference,
   ]);
 
-  useEffect(() => {
-    if (!horizontal) {
+  function handleMainScroll(event: UIEvent<HTMLDivElement>) {
+    if (!horizontal || sidebarBehavior !== "hide-on-scroll") {
       setDockHidden(false);
       return;
     }
-    let lastScrollY = window.scrollY;
-    function onScroll() {
-      const currentY = window.scrollY;
-      if (currentY < 80 || currentY < lastScrollY - 4) setDockHidden(false);
-      else if (currentY > lastScrollY + 4) setDockHidden(true);
-      lastScrollY = currentY;
+    const currentScrollTop = event.currentTarget.scrollTop;
+    const previous = previousScrollTop.current;
+    if (currentScrollTop < 80 || currentScrollTop < previous - 4) {
+      setDockHidden(false);
+    } else if (currentScrollTop > previous + 4) {
+      setDockHidden(true);
     }
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [horizontal]);
+    previousScrollTop.current = currentScrollTop;
+  }
 
   const contentLayout =
     preferences.mainContentLayout === "contained"
@@ -387,69 +489,230 @@ export function AppShell({ children }: { children: ReactNode }) {
         : "max-w-none";
   const dockBase =
     position === "left"
-      ? `inset-y-0 left-0 ${preferences.sidebarCollapsed ? "w-16" : "w-64"}`
+      ? "inset-y-0 left-0"
       : position === "right"
-        ? `inset-y-0 right-0 ${preferences.sidebarCollapsed ? "w-16" : "w-64"}`
+        ? "inset-y-0 right-0"
         : position === "top"
           ? "inset-x-0 top-0 h-16 flex-row"
           : "inset-x-0 bottom-0 h-16 flex-row";
-  const hiddenTransform = dockHidden
-    ? position === "left"
-      ? "-translate-x-full"
-      : position === "right"
-        ? "translate-x-full"
-        : position === "top"
-          ? "-translate-y-full"
-          : "translate-y-full"
-    : "";
-  const dockClass = `group/sidebar z-40 flex fixed ${dockBase} border-border bg-background/95 transition-transform duration-200 ${
+  const hiddenTransform =
+    horizontal && dockHidden
+      ? position === "top"
+        ? "-translate-y-full"
+        : "translate-y-full"
+      : hiddenMode && !hiddenSidebarOpen
+        ? position === "left"
+          ? "-translate-x-full"
+          : "translate-x-full"
+        : "";
+  const dockClass = `group/sidebar z-40 flex fixed ${dockBase} border-border bg-background/95 transition-transform duration-300 ease-out ${
     horizontal
-      ? "flex-row items-center border-r-0 border-b px-2 sm:px-4"
+      ? `flex-row items-center border-r-0 px-2 sm:px-4 ${
+          position === "top" ? "border-b" : "border-b-0 border-t"
+        }`
       : `flex-col px-2 sm:px-3 ${
           position === "left" ? "border-r" : "border-r-0 border-l"
         }`
-  } ${hiddenTransform} ${
-    !preferences.showSidebarOnMobile && !mobileOverride ? "max-sm:hidden" : ""
-  } ${!sidebarVisible ? "invisible" : ""}`;
-  const contentPosition =
-    horizontal && !sidebarVisible
-      ? ""
-      : position === "left"
-      ? preferences.sidebarCollapsed
-        ? "ml-16"
-        : `ml-64 max-sm:ml-0 ${
-            !preferences.showSidebarOnMobile && !mobileOverride
-              ? "max-sm:ml-0"
-              : ""
-          }`
-      : position === "right"
-        ? preferences.sidebarCollapsed
-          ? "mr-16"
-          : `mr-64 max-sm:mr-0 ${
-              !preferences.showSidebarOnMobile && !mobileOverride
-                ? "max-sm:mr-0"
-                : ""
-            }`
-        : position === "top"
-          ? `pt-16 ${
-              !preferences.showSidebarOnMobile && !mobileOverride
-                ? "max-sm:pt-0"
-                : ""
-            }`
-          : `pb-16 ${
-              !preferences.showSidebarOnMobile && !mobileOverride
-                ? "max-sm:pb-0"
-                : ""
-            }`;
-  const frameHeightClass =
-    horizontal && sidebarVisible
-      ? preferences.showSidebarOnMobile
-        ? "h-[calc(100dvh-5rem)]"
-        : "h-[calc(100dvh-5rem)] max-sm:h-[calc(100dvh-1rem)]"
-      : "h-[calc(100dvh-1rem)]";
+  } ${hiddenMode ? "shadow-2xl" : ""} ${hiddenTransform} ${
+    dockHidden ? "pointer-events-none" : ""
+  } ${
+    hiddenMode && !hiddenSidebarOpen ? "pointer-events-none" : ""
+  }`;
+  const reservedSidebarWidth =
+    hiddenMode || collapsed ? 64 : preferences.sidebarWidth;
+  const contentPositionStyle: CSSProperties = horizontal
+    ? {}
+    : position === "left"
+      ? { marginLeft: reservedSidebarWidth }
+      : { marginRight: reservedSidebarWidth };
+  const contentPositionClass = horizontal
+    ? sidebarVisible && !dockHidden
+      ? position === "top"
+        ? "pt-16"
+        : "pb-16"
+      : ""
+    : "";
+  const frameHeightClass = horizontal && sidebarVisible && !dockHidden
+    ? "h-[calc(100dvh-5rem)]"
+    : "h-[calc(100dvh-1rem)]";
+
+  const maxFloatingButtonLeft = Math.max(
+    FLOATING_BUTTON_MARGIN,
+    viewportWidth - FLOATING_BUTTON_SIZE - FLOATING_BUTTON_MARGIN,
+  );
+  const maxFloatingButtonTop = Math.max(
+    FLOATING_BUTTON_MARGIN,
+    viewportHeight - FLOATING_BUTTON_SIZE - FLOATING_BUTTON_MARGIN,
+  );
+  const savedFloatingButtonPosition = preferences.floatingSidebarButtonPosition;
+  const floatingButtonPosition =
+    draggingFloatingButtonPosition ?? {
+      left:
+        FLOATING_BUTTON_MARGIN +
+        (maxFloatingButtonLeft - FLOATING_BUTTON_MARGIN) *
+          savedFloatingButtonPosition.x,
+      top:
+        FLOATING_BUTTON_MARGIN +
+        (maxFloatingButtonTop - FLOATING_BUTTON_MARGIN) *
+          savedFloatingButtonPosition.y,
+    };
+  const horizontalDockAutoHidden =
+    horizontal &&
+    sidebarBehavior === "hide-on-scroll" &&
+    (dockHidden || !sidebarVisible);
+  const floatingButtonVisible =
+    preferences.floatingSidebarButtonEnabled &&
+    (horizontalDockAutoHidden || (hiddenMode && !hiddenSidebarOpen));
+
+  function clampFloatingButtonPosition(left: number, top: number) {
+    return {
+      left: Math.max(
+        FLOATING_BUTTON_MARGIN,
+        Math.min(maxFloatingButtonLeft, left),
+      ),
+      top: Math.max(
+        FLOATING_BUTTON_MARGIN,
+        Math.min(maxFloatingButtonTop, top),
+      ),
+    };
+  }
+
+  function startDraggingFloatingButton(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    if (!event.isPrimary || event.button !== 0) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    floatingButtonDrag.current = {
+      offsetX: event.clientX - bounds.left,
+      offsetY: event.clientY - bounds.top,
+      pointerX: event.clientX,
+      pointerY: event.clientY,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function dragFloatingButton(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = floatingButtonDrag.current;
+    if (!drag) return;
+    if (
+      Math.abs(event.clientX - drag.pointerX) > 4 ||
+      Math.abs(event.clientY - drag.pointerY) > 4
+    ) {
+      drag.moved = true;
+    }
+    if (!drag.moved) return;
+    setDraggingFloatingButtonPosition(
+      clampFloatingButtonPosition(
+        event.clientX - drag.offsetX,
+        event.clientY - drag.offsetY,
+      ),
+    );
+  }
+
+  function finishDraggingFloatingButton(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    const drag = floatingButtonDrag.current;
+    if (!drag) return;
+    if (drag.moved) {
+      const position = clampFloatingButtonPosition(
+        event.clientX - drag.offsetX,
+        event.clientY - drag.offsetY,
+      );
+      updatePreference("floatingSidebarButtonPosition", {
+        x:
+          maxFloatingButtonLeft === FLOATING_BUTTON_MARGIN
+            ? 1
+            : (position.left - FLOATING_BUTTON_MARGIN) /
+              (maxFloatingButtonLeft - FLOATING_BUTTON_MARGIN),
+        y:
+          maxFloatingButtonTop === FLOATING_BUTTON_MARGIN
+            ? 1
+            : (position.top - FLOATING_BUTTON_MARGIN) /
+              (maxFloatingButtonTop - FLOATING_BUTTON_MARGIN),
+      });
+      suppressFloatingButtonClick.current = true;
+    }
+    floatingButtonDrag.current = null;
+    setDraggingFloatingButtonPosition(null);
+  }
+
+  function activateFloatingButton() {
+    if (suppressFloatingButtonClick.current) {
+      suppressFloatingButtonClick.current = false;
+      return;
+    }
+    if (horizontal) {
+      setSidebarVisible(true);
+      setDockHidden(false);
+      return;
+    }
+    if (hiddenMode) setHiddenSidebarOpen(true);
+  }
+
+  function resizeSidebar(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = resizeStart.current;
+    if (!start) return;
+    const delta =
+      position === "left"
+        ? event.clientX - start.pointerX
+        : start.pointerX - event.clientX;
+    setResizingWidth(
+      Math.max(64, Math.min(500, Math.round(start.width + delta))),
+    );
+  }
+
+  function finishSidebarResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = resizeStart.current;
+    if (!start) return;
+    const delta =
+      position === "left"
+        ? event.clientX - start.pointerX
+        : start.pointerX - event.clientX;
+    const width = Math.max(64, Math.min(500, Math.round(start.width + delta)));
+    updatePreference(
+      "sidebarWidth",
+      width,
+    );
+    resizeStart.current = null;
+    setResizingWidth(null);
+    if (
+      hiddenMode &&
+      (event.clientY < 0 ||
+        event.clientY > window.innerHeight ||
+        (position === "left"
+          ? event.clientX > width
+          : event.clientX < window.innerWidth - width))
+    ) {
+      setHiddenSidebarOpen(false);
+    }
+  }
+
+  function handleResizeKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const positionDirection = position === "left" ? direction : -direction;
+    const step = event.shiftKey ? 32 : 16;
+    updatePreference(
+      "sidebarWidth",
+      Math.max(
+        64,
+        Math.min(500, preferences.sidebarWidth + positionDirection * step),
+      ),
+    );
+  }
 
   function toggleCollapsed() {
-    updatePreference("sidebarCollapsed", !preferences.sidebarCollapsed);
+    if (preferences.sidebarCollapsed || preferences.sidebarWidth <= 64) {
+      updatePreference("sidebarCollapsed", false);
+      if (preferences.sidebarWidth <= 64) {
+        updatePreference("sidebarWidth", 256);
+      }
+      return;
+    }
+    updatePreference("sidebarCollapsed", true);
   }
 
   return (
@@ -460,34 +723,117 @@ export function AppShell({ children }: { children: ReactNode }) {
       data-sidebar-position={position}
     >
       <TooltipProvider delayDuration={300}>
+        {hiddenMode && !hiddenSidebarOpen && (
+          <>
+            <button
+              type="button"
+              aria-label="Open sidebar"
+              className={`fixed inset-y-0 z-30 hidden w-2 cursor-pointer bg-transparent hover:bg-accent/30 focus-visible:bg-accent/30 focus-visible:outline-none sm:block ${
+                position === "left" ? "left-0" : "right-0"
+              }`}
+              onPointerEnter={(event) => {
+                if (event.pointerType !== "touch") setHiddenSidebarOpen(true);
+              }}
+              onFocus={() => setHiddenSidebarOpen(true)}
+              onClick={() => setHiddenSidebarOpen(true)}
+            />
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="Open navigation"
+              className={`fixed z-50 size-10 border border-border bg-surface shadow-lg ${
+                hasCoarsePointer ? "" : "md:hidden"
+              } ${
+                position === "left"
+                  ? "left-0 top-1/2 -translate-y-1/2"
+                  : "right-0 top-1/2 -translate-y-1/2"
+              }`}
+              hidden={preferences.floatingSidebarButtonEnabled}
+              onClick={() => setHiddenSidebarOpen(true)}
+            >
+              <Menu size={17} />
+            </Button>
+          </>
+        )}
+
         {position !== "bottom" && (
           <Sidebar
+            id="school-workspace-navigation"
             aria-label="School workspace navigation"
-            aria-hidden={!sidebarVisible || dockHidden}
-            inert={!sidebarVisible || dockHidden}
+            aria-hidden={!dockIsVisible || dockHidden}
+            inert={!dockIsVisible || dockHidden}
+            onPointerLeave={() => {
+              if (hiddenMode && !resizeStart.current) {
+                setHiddenSidebarOpen(false);
+              }
+            }}
+            style={!horizontal ? { width: sidebarWidth } : undefined}
             className={dockClass}
           >
             <SidebarContents
-              collapsed={!horizontal && preferences.sidebarCollapsed}
+              collapsed={collapsed}
+              canToggleCollapsed={!tabletCollapsed}
+              hiddenMode={hiddenMode}
               horizontal={horizontal}
               role={role}
               onRoleChange={setRole}
-              onNavigate={() => setMobileOverride(false)}
+              onNavigate={() => {
+                if (hiddenMode) setHiddenSidebarOpen(false);
+              }}
+              onCloseHidden={() => setHiddenSidebarOpen(false)}
+              onProfileMenuOpen={() => {
+                if (hiddenMode) setHiddenSidebarOpen(false);
+              }}
               onToggleCollapsed={toggleCollapsed}
               position={position}
             />
+            {!horizontal &&
+              (!collapsed || hiddenMode || resizingWidth !== null) && (
+                <div
+                  role="separator"
+                  aria-label="Resize sidebar"
+                  aria-orientation="vertical"
+                  aria-valuemin={64}
+                  aria-valuemax={500}
+                  aria-valuenow={sidebarWidth}
+                  aria-valuetext={`${sidebarWidth} pixels`}
+                  tabIndex={0}
+                  className={`absolute inset-y-0 z-20 hidden w-1.5 touch-none cursor-col-resize bg-transparent transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none md:block ${
+                    position === "left" ? "right-0" : "left-0"
+                  }`}
+                  onPointerDown={(event) => {
+                    resizeStart.current = {
+                      pointerX: event.clientX,
+                      width: sidebarWidth,
+                    };
+                    event.preventDefault();
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                  }}
+                  onPointerMove={resizeSidebar}
+                  onPointerUp={finishSidebarResize}
+                  onPointerCancel={() => {
+                    resizeStart.current = null;
+                    setResizingWidth(null);
+                  }}
+                  onKeyDown={handleResizeKeyDown}
+                />
+              )}
           </Sidebar>
         )}
 
         <div
-          className={`${contentPosition} p-2 ${
+          style={contentPositionStyle}
+          className={`${contentPositionClass} p-2 ${
             position === "bottom" ? "order-1" : ""
           }`}
         >
           <main
-            className={`${frameHeightClass} overflow-hidden rounded-2xl border border-border bg-background shadow-xl`}
+            className={`${frameHeightClass} overflow-hidden rounded-2xl border border-border bg-background shadow-xl transition-[height] duration-300`}
           >
-            <div className="h-full overflow-y-auto overscroll-contain">
+            <div
+              className="h-full overflow-y-auto overscroll-contain"
+              onScroll={handleMainScroll}
+            >
               <div
                 className={`mx-auto w-full ${contentLayout} px-4 py-7 sm:px-6 lg:px-8`}
               >
@@ -499,58 +845,75 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {position === "bottom" && (
           <Sidebar
+            id="school-workspace-navigation"
             aria-label="School workspace navigation"
-            aria-hidden={!sidebarVisible || dockHidden}
-            inert={!sidebarVisible || dockHidden}
+            aria-hidden={!dockIsVisible || dockHidden}
+            inert={!dockIsVisible || dockHidden}
+            onPointerLeave={() => {
+              if (hiddenMode) setHiddenSidebarOpen(false);
+            }}
             className={`${dockClass} order-2`}
           >
             <SidebarContents
-              collapsed={false}
+              collapsed={collapsed}
+              canToggleCollapsed={false}
+              hiddenMode={false}
               horizontal
               role={role}
               onRoleChange={setRole}
-              onNavigate={() => setMobileOverride(false)}
+              onNavigate={() => undefined}
+              onCloseHidden={() => setHiddenSidebarOpen(false)}
+              onProfileMenuOpen={() => undefined}
               onToggleCollapsed={toggleCollapsed}
               position={position}
             />
           </Sidebar>
         )}
 
-        {horizontal && !sidebarVisible && (
+        {horizontal && !sidebarVisible && !horizontalDockAutoHidden && (
           <Button
             variant="secondary"
             size="icon"
             aria-label="Show sidebar"
+            aria-controls="school-workspace-navigation"
             className={`fixed z-50 rounded-xl border border-border bg-surface shadow-lg ${
               position === "top"
                 ? "left-1/2 top-0 -translate-x-1/2"
                 : "bottom-0 left-1/2 -translate-x-1/2"
             }`}
-            onClick={() => setSidebarVisible(true)}
+            onClick={() => {
+              setSidebarVisible(true);
+              setDockHidden(false);
+            }}
           >
             <Menu size={17} />
           </Button>
         )}
 
-        {!preferences.showSidebarOnMobile && sidebarVisible && (
+        {floatingButtonVisible && (
           <Button
+            type="button"
             variant="secondary"
             size="icon"
-            aria-label="Open navigation"
-            className={`fixed z-50 size-10 border border-border bg-surface shadow-lg sm:hidden ${
-              position === "left"
-                ? "left-0 top-1/2 -translate-y-1/2"
-                : position === "right"
-                  ? "right-0 top-1/2 -translate-y-1/2"
-                  : position === "top"
-                    ? "left-1/2 top-0 -translate-x-1/2"
-                    : "bottom-0 left-1/2 -translate-x-1/2"
-            }`}
-            onClick={() => setMobileOverride((open) => !open)}
+            aria-label="Show sidebar"
+            aria-controls="school-workspace-navigation"
+            className="fixed z-50 touch-none rounded-full border border-border bg-surface shadow-xl"
+            style={{
+              left: floatingButtonPosition.left,
+              top: floatingButtonPosition.top,
+              width: FLOATING_BUTTON_SIZE,
+              height: FLOATING_BUTTON_SIZE,
+            }}
+            onPointerDown={startDraggingFloatingButton}
+            onPointerMove={dragFloatingButton}
+            onPointerUp={finishDraggingFloatingButton}
+            onPointerCancel={finishDraggingFloatingButton}
+            onClick={activateFloatingButton}
           >
-            <Menu size={17} />
+            <Menu size={19} />
           </Button>
         )}
+
         <ElasticScroller />
       </TooltipProvider>
     </div>
