@@ -225,7 +225,7 @@
   background: transparent;
 }
 
-:root[data-control-roundness] ~ body button,
+:root[data-control-roundness] ~ body button:not([role="switch"]),
 :root[data-control-roundness] ~ body input,
 :root[data-control-roundness] ~ body select,
 :root[data-control-roundness] ~ body textarea,

@@ -183,21 +183,32 @@ function SidebarContents({
                   (item.to === "/settings/appearance" &&
                     pathname.startsWith("/settings"))
                 : false;
-              const iconColor =
-                preferences.sidebarIconStyle === "multicolor"
-                  ? [
-                      "#60a5fa",
-                      "#c084fc",
-                      "#34d399",
-                      "#fbbf24",
-                      "#fb7185",
-                      "#22d3ee",
-                      "#a3e635",
-                    ][index % 7]
-                  : preferences.sidebarIconColor;
               const iconStyle = {
-                color: isActive ? undefined : iconColor,
+                color:
+                  isActive
+                    ? undefined
+                    : preferences.sidebarIconStyle === "multicolor"
+                      ? [
+                          "#60a5fa",
+                          "#c084fc",
+                          "#34d399",
+                          "#fbbf24",
+                          "#fb7185",
+                          "#22d3ee",
+                          "#a3e635",
+                        ][index % 7]
+                      : preferences.sidebarIconColorMode === "custom"
+                        ? preferences.sidebarIconColor
+                        : undefined,
               } satisfies CSSProperties;
+              const iconClassName =
+                preferences.sidebarIconStyle === "multicolor"
+                  ? "size-5 shrink-0"
+                  : preferences.sidebarIconColorMode === "theme" || isActive
+                    ? "size-5 shrink-0 text-accent"
+                    : preferences.sidebarIconColorMode === "adaptive"
+                      ? "size-5 shrink-0 text-muted-foreground"
+                      : "size-5 shrink-0";
               const labelClass = horizontal
                 ? "inline"
                 : collapsed
@@ -208,6 +219,13 @@ function SidebarContents({
                 : collapsed
                   ? "justify-center px-0"
                   : "min-w-0 overflow-hidden max-sm:justify-center max-sm:px-0";
+              const elevatedMenuClassName = preferences.elevatedSidebarMenus
+                ? `ring-1 ring-inset ${
+                    isActive
+                      ? "ring-accent/30 shadow-md shadow-accent/10"
+                      : "ring-foreground/10 shadow-sm shadow-black/10 hover:-translate-y-px hover:ring-accent/25 hover:shadow-md hover:shadow-black/15"
+                  }`
+                : "";
               const shortcut = preferences.showKeyboardShortcuts
                 ? item.shortcut
                 : undefined;
@@ -223,7 +241,7 @@ function SidebarContents({
 
               const content = (
                 <>
-                  <Icon className="size-5 shrink-0" style={iconStyle} />
+                  <Icon className={iconClassName} style={iconStyle} />
                   <span className={labelClass}>{item.label}</span>
                   {shortcutLabel && !horizontal && !collapsed && (
                     <span className="ml-auto hidden rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">
@@ -249,11 +267,7 @@ function SidebarContents({
                         <SidebarMenuButton
                           asChild
                           active={isActive}
-                          className={`${buttonClass} ${
-                            preferences.elevatedSidebarMenus
-                              ? "shadow-sm shadow-black/10"
-                              : ""
-                          }`}
+                          className={`${buttonClass} ${elevatedMenuClassName}`}
                         >
                           <Link to={item.to} onClick={onNavigate}>
                             {content}
@@ -264,7 +278,7 @@ function SidebarContents({
                           type="button"
                           disabled
                           aria-label={`${item.label}, coming soon`}
-                          className={`${buttonClass} cursor-not-allowed opacity-70`}
+                          className={`${buttonClass} ${elevatedMenuClassName} cursor-not-allowed opacity-70`}
                         >
                           {content}
                         </SidebarMenuButton>

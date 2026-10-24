@@ -73,6 +73,7 @@ export const sidebarPreferenceSchema = z.object({
     })
     .default({ x: 1, y: 1 }),
   sidebarIconStyle: z.enum(["monochrome", "multicolor"]),
+  sidebarIconColorMode: z.enum(["theme", "adaptive", "custom"]).default("custom"),
   sidebarIconColor: z.string().regex(/^#[\da-f]{6}$/i),
   mainContentLayout: z.enum(["contained", "wide", "full"]),
   showKeyboardShortcuts: z.boolean(),
@@ -121,6 +122,7 @@ export const defaultUiPreferences: UiPreferences = {
   floatingSidebarButtonEnabled: true,
   floatingSidebarButtonPosition: { x: 1, y: 1 },
   sidebarIconStyle: "monochrome",
+  sidebarIconColorMode: "custom",
   sidebarIconColor: "#818cf8",
   mainContentLayout: "wide",
   showKeyboardShortcuts: true,
