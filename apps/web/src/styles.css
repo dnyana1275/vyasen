@@ -42,6 +42,11 @@
   --accent-foreground: #111322;
 }
 
+:root[data-color-theme="steel"] {
+  --accent: #7f9cb5;
+  --accent-foreground: #111322;
+}
+
 :root[data-color-theme="ocean"] {
   --accent: #7193ff;
   --accent-foreground: #111322;
@@ -57,6 +62,16 @@
   --accent-foreground: #111322;
 }
 
+:root[data-color-theme="arctic"] {
+  --accent: #93c5fd;
+  --accent-foreground: #111322;
+}
+
+:root[data-color-theme="violet"] {
+  --accent: #a78bfa;
+  --accent-foreground: #111322;
+}
+
 :root[data-color-theme="lilac"] {
   --accent: #c18cff;
   --accent-foreground: #111322;
@@ -64,6 +79,11 @@
 
 :root[data-color-theme="barbie"] {
   --accent: #ff62b0;
+  --accent-foreground: #111322;
+}
+
+:root[data-color-theme="magenta"] {
+  --accent: #e935c1;
   --accent-foreground: #111322;
 }
 
@@ -82,6 +102,11 @@
   --accent-foreground: #111322;
 }
 
+:root[data-color-theme="coral"] {
+  --accent: #ff8a75;
+  --accent-foreground: #111322;
+}
+
 :root[data-color-theme="copper"] {
   --accent: #d49376;
   --accent-foreground: #111322;
@@ -97,6 +122,16 @@
   --accent-foreground: #111322;
 }
 
+:root[data-color-theme="sand"] {
+  --accent: #e5c07b;
+  --accent-foreground: #111322;
+}
+
+:root[data-color-theme="noir"] {
+  --accent: #d4b16a;
+  --accent-foreground: #111322;
+}
+
 :root[data-color-theme="lime"] {
   --accent: #a3e635;
   --accent-foreground: #111322;
@@ -109,6 +144,11 @@
 
 :root[data-color-theme="aurora"] {
   --accent: #36d8c5;
+  --accent-foreground: #111322;
+}
+
+:root[data-color-theme="mint"] {
+  --accent: #5eead4;
   --accent-foreground: #111322;
 }
 

@@ -30,6 +30,14 @@ const themeDetails: Record<
     previewSurface: "#090909",
     previewPanel: "#52525b",
   },
+  steel: {
+    label: "Steel Blue",
+    swatch: "#7f9cb5",
+    detail: "Cool steel & muted blue",
+    previewBackground: "#252c33",
+    previewSurface: "#161b20",
+    previewPanel: "#4d6478",
+  },
   ocean: {
     label: "Ocean Blue",
     swatch: "#7193ff",
@@ -54,6 +62,22 @@ const themeDetails: Record<
     previewSurface: "#10212c",
     previewPanel: "#285b7d",
   },
+  arctic: {
+    label: "Arctic Frost",
+    swatch: "#93c5fd",
+    detail: "Icy blue & cool steel",
+    previewBackground: "#1f2c3d",
+    previewSurface: "#101a27",
+    previewPanel: "#3d6b9e",
+  },
+  violet: {
+    label: "Ultra Violet",
+    swatch: "#a78bfa",
+    detail: "Indigo depth & soft violet",
+    previewBackground: "#2b2340",
+    previewSurface: "#191327",
+    previewPanel: "#5b45a0",
+  },
   lilac: {
     label: "Velvet Lilac",
     swatch: "#c18cff",
@@ -69,6 +93,14 @@ const themeDetails: Record<
     previewBackground: "#351126",
     previewSurface: "#210817",
     previewPanel: "#963568",
+  },
+  magenta: {
+    label: "Neon Magenta",
+    swatch: "#e935c1",
+    detail: "Bold & electric",
+    previewBackground: "#361430",
+    previewSurface: "#210c1e",
+    previewPanel: "#8a2c76",
   },
   rose: {
     label: "Studio Rose",
@@ -94,6 +126,14 @@ const themeDetails: Record<
     previewSurface: "#1b080b",
     previewPanel: "#8d1b31",
   },
+  coral: {
+    label: "Coral Reef",
+    swatch: "#ff8a75",
+    detail: "Warm coral & deep charcoal",
+    previewBackground: "#382420",
+    previewSurface: "#241612",
+    previewPanel: "#8a4a3c",
+  },
   copper: {
     label: "Copper Slate",
     swatch: "#d49376",
@@ -117,6 +157,22 @@ const themeDetails: Record<
     previewBackground: "#39321b",
     previewSurface: "#242010",
     previewPanel: "#837139",
+  },
+  sand: {
+    label: "Desert Sand",
+    swatch: "#e5c07b",
+    detail: "Warm neutral & sand",
+    previewBackground: "#37301f",
+    previewSurface: "#231e12",
+    previewPanel: "#8a7440",
+  },
+  noir: {
+    label: "Noir Gold",
+    swatch: "#d4b16a",
+    detail: "Ink black & antique gold",
+    previewBackground: "#26231c",
+    previewSurface: "#151310",
+    previewPanel: "#6b5a33",
   },
   lime: {
     label: "Electric Lime",
@@ -149,6 +205,14 @@ const themeDetails: Record<
     previewBackground: "#292337",
     previewSurface: "#191521",
     previewPanel: "#59487d",
+  },
+  mint: {
+    label: "Mint Breeze",
+    swatch: "#5eead4",
+    detail: "Crisp mint & deep slate",
+    previewBackground: "#1c332f",
+    previewSurface: "#0e1f1c",
+    previewPanel: "#2f7d6e",
   },
 };
 
@@ -188,10 +252,10 @@ function ThemePreview({
 
 const displayModes = [
   {
-    id: "light",
-    label: "Light",
-    detail: "Use a light color scheme",
-    icon: Sun,
+    id: "system",
+    label: "Use device setting",
+    detail: "Match your system preference",
+    icon: Smartphone,
   },
   {
     id: "dark",
@@ -200,10 +264,10 @@ const displayModes = [
     icon: Moon,
   },
   {
-    id: "system",
-    label: "Use device setting",
-    detail: "Match your system preference",
-    icon: Smartphone,
+    id: "light",
+    label: "Light",
+    detail: "Use a light color scheme",
+    icon: Sun,
   },
 ] as const;
 
