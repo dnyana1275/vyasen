@@ -220,8 +220,11 @@ export function SidebarSettings() {
           </div>
           {!horizontal && canResizeSidebar && (
             <p className="mt-3 text-xs text-muted-foreground">
-              On medium screens and larger, drag the sidebar edge to resize it
-              from 64 to 500 pixels.
+              On medium screens and larger, drag a pinned sidebar edge—even
+              when collapsed—to resize. The maximum is 350 pixels up to 1024px
+              wide and 500 pixels on wider screens. Widths below 150 pixels
+              collapse automatically. Hidden sidebars use a fixed responsive
+              width so navigation labels remain visible.
             </p>
           )}
           <div className="mt-5 border-t border-border pt-4">

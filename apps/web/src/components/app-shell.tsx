@@ -157,7 +157,7 @@ function SidebarContents({
         className={
           horizontal
             ? "flex min-w-0 flex-1 flex-row items-center overflow-x-auto overflow-y-hidden px-1"
-            : "flex min-h-0 flex-1 flex-col overflow-y-auto px-1"
+            : "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-1"
         }
       >
         {!collapsed && !horizontal && (
@@ -202,12 +202,12 @@ function SidebarContents({
                 ? "inline"
                 : collapsed
                   ? "hidden"
-                  : "inline";
+                  : "min-w-0 flex-1 truncate";
               const buttonClass = horizontal
                 ? "w-auto shrink-0 px-3"
                 : collapsed
                   ? "justify-center px-0"
-                  : "max-sm:justify-center max-sm:px-0";
+                  : "min-w-0 overflow-hidden max-sm:justify-center max-sm:px-0";
               const shortcut = preferences.showKeyboardShortcuts
                 ? item.shortcut
                 : undefined;
@@ -223,7 +223,7 @@ function SidebarContents({
 
               const content = (
                 <>
-                  <Icon size={20} style={iconStyle} />
+                  <Icon className="size-5 shrink-0" style={iconStyle} />
                   <span className={labelClass}>{item.label}</span>
                   {shortcutLabel && !horizontal && !collapsed && (
                     <span className="ml-auto hidden rounded-md bg-background/70 px-1.5 py-0.5 text-[10px] text-muted-foreground sm:inline">
@@ -321,14 +321,14 @@ function SidebarContents({
               className={`flex h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 collapsed || horizontal
                   ? "size-11 shrink-0 justify-center p-0"
-                  : ""
+                  : "min-w-0 overflow-hidden"
               } ${
                 pathname.startsWith("/settings")
                   ? "bg-accent/15 text-accent"
                   : "bg-surface/45 text-muted-foreground"
               }`}
             >
-              <Settings size={20} />
+              <Settings className="size-5 shrink-0" />
               {!collapsed && !horizontal && (
                 <span>Settings</span>
               )}
@@ -360,17 +360,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<SchoolRole>("admin");
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [hiddenSidebarOpen, setHiddenSidebarOpen] = useState(false);
+  const [tabletSidebarExpanded, setTabletSidebarExpanded] = useState(false);
   const [dockHidden, setDockHidden] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(
     () => (typeof window === "undefined" ? 1024 : window.innerWidth),
   );
   const [viewportHeight, setViewportHeight] = useState(
     () => (typeof window === "undefined" ? 768 : window.innerHeight),
-  );
-  const [hasCoarsePointer, setHasCoarsePointer] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(any-pointer: coarse)").matches,
   );
   const [resizingWidth, setResizingWidth] = useState<number | null>(null);
   const resizeStart = useRef<{ pointerX: number; width: number } | null>(null);
@@ -395,18 +391,32 @@ export function AppShell({ children }: { children: ReactNode }) {
     : preferences.sidebarPosition;
   const horizontal = position === "top" || position === "bottom";
   const hiddenMode = !horizontal && sidebarBehavior === "hidden";
+  const fixedHiddenWidth = viewportWidth >= 1024 ? 320 : 300;
+  const fixedHiddenSizing = hiddenMode && !isSmallScreen && !isTabletWidth;
+  const maxSidebarWidth = viewportWidth > 1024 ? 500 : 350;
   const tabletCollapsed =
     isTabletWidth && !horizontal && sidebarBehavior === "pinned";
   const collapsed =
     !horizontal &&
-    (tabletCollapsed ||
-      preferences.sidebarWidth <= 64 ||
+    !tabletSidebarExpanded &&
+    resizingWidth === null &&
+    ((!fixedHiddenSizing && preferences.sidebarWidth < 150) ||
+      tabletCollapsed ||
       (!hiddenMode && preferences.sidebarCollapsed));
-  const sidebarWidth = hiddenMode
-    ? (resizingWidth ?? preferences.sidebarWidth)
-    : collapsed
-      ? 64
-      : (resizingWidth ?? preferences.sidebarWidth);
+  const tabletOverlayOpen = tabletCollapsed && tabletSidebarExpanded;
+  const preferredSidebarWidth = Math.min(
+    preferences.sidebarWidth,
+    maxSidebarWidth,
+  );
+  const sidebarWidth = fixedHiddenSizing
+    ? fixedHiddenWidth
+    : hiddenMode
+      ? (resizingWidth ?? preferredSidebarWidth)
+      : collapsed
+        ? 64
+        : (resizingWidth ?? preferredSidebarWidth);
+  const collapsedContents =
+    collapsed || (resizingWidth !== null && sidebarWidth < 150);
   const dockIsVisible = horizontal
     ? sidebarVisible
     : hiddenMode
@@ -423,16 +433,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(any-pointer: coarse)");
-    const updatePointerType = () => setHasCoarsePointer(mediaQuery.matches);
-    updatePointerType();
-    mediaQuery.addEventListener("change", updatePointerType);
-    return () => mediaQuery.removeEventListener("change", updatePointerType);
-  }, []);
-
-  useEffect(() => {
     setSidebarVisible(true);
     setHiddenSidebarOpen(false);
+    setTabletSidebarExpanded(false);
     setDockHidden(false);
     previousScrollTop.current = 0;
   }, [isSmallScreen, isTabletWidth, position, sidebarBehavior]);
@@ -449,6 +452,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           setSidebarVisible((visible) => !visible);
         } else if (hiddenMode) {
           setHiddenSidebarOpen((open) => !open);
+        } else if (tabletCollapsed) {
+          setTabletSidebarExpanded((expanded) => !expanded);
         } else if (!tabletCollapsed) {
           updatePreference("sidebarCollapsed", !preferences.sidebarCollapsed);
         } else {
@@ -519,7 +524,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     hiddenMode && !hiddenSidebarOpen ? "pointer-events-none" : ""
   }`;
   const reservedSidebarWidth =
-    hiddenMode || collapsed ? 64 : preferences.sidebarWidth;
+    hiddenMode || collapsed || tabletCollapsed
+      ? 64
+      : sidebarWidth;
   const contentPositionStyle: CSSProperties = horizontal
     ? {}
     : position === "left"
@@ -659,7 +666,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         ? event.clientX - start.pointerX
         : start.pointerX - event.clientX;
     setResizingWidth(
-      Math.max(64, Math.min(500, Math.round(start.width + delta))),
+      Math.max(
+        64,
+        Math.min(maxSidebarWidth, Math.round(start.width + delta)),
+      ),
     );
   }
 
@@ -670,11 +680,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       position === "left"
         ? event.clientX - start.pointerX
         : start.pointerX - event.clientX;
-    const width = Math.max(64, Math.min(500, Math.round(start.width + delta)));
-    updatePreference(
-      "sidebarWidth",
-      width,
+    const width = Math.max(
+      64,
+      Math.min(maxSidebarWidth, Math.round(start.width + delta)),
     );
+    applySidebarWidth(width);
     resizeStart.current = null;
     setResizingWidth(null);
     if (
@@ -695,19 +705,47 @@ export function AppShell({ children }: { children: ReactNode }) {
     const direction = event.key === "ArrowRight" ? 1 : -1;
     const positionDirection = position === "left" ? direction : -direction;
     const step = event.shiftKey ? 32 : 16;
-    updatePreference(
-      "sidebarWidth",
+    const baseWidth =
+      collapsed && preferences.sidebarWidth >= 150
+        ? 64
+        : preferences.sidebarWidth;
+    applySidebarWidth(
       Math.max(
         64,
-        Math.min(500, preferences.sidebarWidth + positionDirection * step),
+        Math.min(
+          maxSidebarWidth,
+          baseWidth + positionDirection * step,
+        ),
       ),
     );
   }
 
-  function toggleCollapsed() {
-    if (preferences.sidebarCollapsed || preferences.sidebarWidth <= 64) {
+  function applySidebarWidth(width: number) {
+    const boundedWidth = Math.max(64, Math.min(maxSidebarWidth, width));
+    updatePreference("sidebarWidth", boundedWidth);
+    if (boundedWidth < 150) {
+      updatePreference("sidebarCollapsed", true);
+      setTabletSidebarExpanded(false);
+    } else {
       updatePreference("sidebarCollapsed", false);
-      if (preferences.sidebarWidth <= 64) {
+    }
+  }
+
+  function toggleCollapsed() {
+    if (tabletCollapsed) {
+      if (!tabletSidebarExpanded && preferences.sidebarWidth <= 64) {
+        updatePreference("sidebarWidth", 256);
+      }
+      setTabletSidebarExpanded((expanded) => !expanded);
+      return;
+    }
+    if (
+      preferences.sidebarCollapsed ||
+      preferences.sidebarWidth < 150 ||
+      preferences.sidebarWidth <= 64
+    ) {
+      updatePreference("sidebarCollapsed", false);
+      if (preferences.sidebarWidth < 150) {
         updatePreference("sidebarWidth", 256);
       }
       return;
@@ -723,6 +761,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       data-sidebar-position={position}
     >
       <TooltipProvider delayDuration={300}>
+        {tabletOverlayOpen && (
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            className="fixed inset-0 z-30 cursor-default bg-transparent"
+            onClick={() => setTabletSidebarExpanded(false)}
+          />
+        )}
         {hiddenMode && !hiddenSidebarOpen && (
           <>
             <button
@@ -737,22 +783,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               onFocus={() => setHiddenSidebarOpen(true)}
               onClick={() => setHiddenSidebarOpen(true)}
             />
-            <Button
-              variant="secondary"
-              size="icon"
-              aria-label="Open navigation"
-              className={`fixed z-50 size-10 border border-border bg-surface shadow-lg ${
-                hasCoarsePointer ? "" : "md:hidden"
-              } ${
-                position === "left"
-                  ? "left-0 top-1/2 -translate-y-1/2"
-                  : "right-0 top-1/2 -translate-y-1/2"
-              }`}
-              hidden={preferences.floatingSidebarButtonEnabled}
-              onClick={() => setHiddenSidebarOpen(true)}
-            >
-              <Menu size={17} />
-            </Button>
           </>
         )}
 
@@ -768,17 +798,20 @@ export function AppShell({ children }: { children: ReactNode }) {
               }
             }}
             style={!horizontal ? { width: sidebarWidth } : undefined}
-            className={dockClass}
+            className={`${dockClass} ${
+              tabletOverlayOpen ? "z-40 shadow-2xl" : ""
+            }`}
           >
             <SidebarContents
-              collapsed={collapsed}
-              canToggleCollapsed={!tabletCollapsed}
+              collapsed={collapsedContents}
+              canToggleCollapsed
               hiddenMode={hiddenMode}
               horizontal={horizontal}
               role={role}
               onRoleChange={setRole}
               onNavigate={() => {
                 if (hiddenMode) setHiddenSidebarOpen(false);
+                if (tabletOverlayOpen) setTabletSidebarExpanded(false);
               }}
               onCloseHidden={() => setHiddenSidebarOpen(false)}
               onProfileMenuOpen={() => {
@@ -787,37 +820,37 @@ export function AppShell({ children }: { children: ReactNode }) {
               onToggleCollapsed={toggleCollapsed}
               position={position}
             />
-            {!horizontal &&
-              (!collapsed || hiddenMode || resizingWidth !== null) && (
-                <div
-                  role="separator"
-                  aria-label="Resize sidebar"
-                  aria-orientation="vertical"
-                  aria-valuemin={64}
-                  aria-valuemax={500}
-                  aria-valuenow={sidebarWidth}
-                  aria-valuetext={`${sidebarWidth} pixels`}
-                  tabIndex={0}
-                  className={`absolute inset-y-0 z-20 hidden w-1.5 touch-none cursor-col-resize bg-transparent transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none md:block ${
-                    position === "left" ? "right-0" : "left-0"
-                  }`}
-                  onPointerDown={(event) => {
-                    resizeStart.current = {
-                      pointerX: event.clientX,
-                      width: sidebarWidth,
-                    };
-                    event.preventDefault();
-                    event.currentTarget.setPointerCapture(event.pointerId);
-                  }}
-                  onPointerMove={resizeSidebar}
-                  onPointerUp={finishSidebarResize}
-                  onPointerCancel={() => {
-                    resizeStart.current = null;
-                    setResizingWidth(null);
-                  }}
-                  onKeyDown={handleResizeKeyDown}
-                />
-              )}
+            {!horizontal && !fixedHiddenSizing && (
+              <div
+                role="separator"
+                aria-label="Resize sidebar"
+                aria-orientation="vertical"
+                aria-valuemin={64}
+                aria-valuemax={maxSidebarWidth}
+                aria-valuenow={sidebarWidth}
+                aria-valuetext={`${sidebarWidth} pixels`}
+                tabIndex={0}
+                className={`absolute inset-y-0 z-20 hidden w-1.5 touch-none cursor-col-resize bg-transparent transition-colors hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none md:block ${
+                  position === "left" ? "right-0" : "left-0"
+                }`}
+                onPointerDown={(event) => {
+                  resizeStart.current = {
+                    pointerX: event.clientX,
+                    width: sidebarWidth,
+                  };
+                  setResizingWidth(sidebarWidth);
+                  event.preventDefault();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerMove={resizeSidebar}
+                onPointerUp={finishSidebarResize}
+                onPointerCancel={() => {
+                  resizeStart.current = null;
+                  setResizingWidth(null);
+                }}
+                onKeyDown={handleResizeKeyDown}
+              />
+            )}
           </Sidebar>
         )}
 
@@ -870,7 +903,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Sidebar>
         )}
 
-        {horizontal && !sidebarVisible && !horizontalDockAutoHidden && (
+        {horizontal &&
+          !sidebarVisible &&
+          !horizontalDockAutoHidden &&
+          !preferences.floatingSidebarButtonEnabled && (
           <Button
             variant="secondary"
             size="icon"
@@ -895,7 +931,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             type="button"
             variant="secondary"
             size="icon"
-            aria-label="Show sidebar"
+            aria-label={horizontal ? "Show sidebar" : "Open sidebar"}
             aria-controls="school-workspace-navigation"
             className="fixed z-50 touch-none rounded-full border border-border bg-surface shadow-xl"
             style={{
